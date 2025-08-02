@@ -1,0 +1,285 @@
+# Création des datasets synthétiques variés
+datasets = [
+    make_moons(n_samples=300, noise=0.25, random_state=42),
+    make_circles(n_samples=300, noise=0.2, factor=0.5, random_state=24),
+    make_classification(n_samples=300, n_features=2, n_redundant=0, n_informative=2,
+                        n_clusters_per_class=1, random_state=7)
+]
+
+alphas = [5e-5, 2e-3, 2.5e-2]
+classifiers = []
+names = []
+
+for alpha in alphas:
+    clf = make_pipeline(
+        StandardScaler(),
+        MLPClassifier(hidden_layer_sizes=(15, 10), alpha=alpha, max_iter=2000, early_stopping=True,
+                      solver='adam', random_state=0)
+    )
+    classifiers.append(clf)
+    names.append(f"MLP alpha={alpha:.5f}")
+
+h = 0.02  # pas pour grille décision
+
+plt.figure(figsize=(18, 12))
+plot_index = 1
+
+for dataset_id, (X, y) in enumerate(datasets, start=1):
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.4, random_state=0)
+
+    x_min, x_max = X[:, 0].min() - .6, X[:, 0].max() + .6
+    y_min, y_max = X[:, 1].min() - .6, X[:, 1].max() + .6
+    xx, yy = np.meshgrid(np.arange(x_min, x_max, h), np.arange(y_min, y_max, h))
+
+    # Affichage des données
+    plt.subplot(len(datasets), len(classifiers) + 1, plot_index)
+    plt.scatter(X_train[:, 0], X_train[:, 1], c=y_train, cmap=ListedColormap(['#FF7F7F', '#7FBFFF']), edgecolor='k', label='Train')
+    plt.scatter(X_test[:, 0], X_test[:, 1], c=y_test, cmap=ListedColormap(['#FFBFBF', '#BFDFFF']), edgecolor='k', alpha=0.6, label='Test')
+    plt.title(f"Dataset {dataset_id} - Données")
+    plt.xticks(())
+    plt.yticks(())
+    plot_index += 1
+
+    # Itération sur classifieurs
+    for name, clf in zip(names, classifiers):
+        plt.subplot(len(datasets), len(classifiers) + 1, plot_index)
+        clf.fit(X_train, y_train)
+        score = clf.score(X_test, y_test)
+
+        # Calcul de la frontière de décision
+        if hasattr(clf, "decision_function"):
+            Z = clf.decision_function(np.c_[xx.ravel(), yy.ravel()])
+        else:
+            Z = clf.predict_proba(np.c_[xx.ravel(), yy.ravel()])[:, 1]
+
+        Z = Z.reshape(xx.shape)
+        plt.contourf(xx, yy, Z, cmap=plt.cm.viridis, alpha=0.8)
+
+        # Points train et test
+        plt.scatter(X_train[:, 0], X_train[:, 1], c=y_train, cmap=ListedColormap(['#FF7F7F', '#7FBFFF']), edgecolor='k')
+        plt.scatter(X_test[:, 0], X_test[:, 1], c=y_test, cmap=ListedColormap(['#FFBFBF', '#BFDFFF']), edgecolor='k', alpha=0.6)
+
+        plt.title(f"{name}\nScore test : {score:.3f}")
+        plt.xticks(())
+        plt.yticks(())
+        plot_index += 1
+
+plt.tight_layout()
+plt.show()
+class ReconstructionImage:
+    """
+    Reconstruction d'images avec des réseaux de neurones
+    """
+
+    def __init__(self):
+        self.model = None
+        self.img_shape = None
+        self.img_original = None
+
+    def creer_image_test(self, size=(64, 64), pattern='gradient'):
+        h, w = size
+        if pattern == 'gradient':
+            x, y = np.meshgrid(np.linspace(0, 1, w), np.linspace(0, 1, h))
+            img = (x + y) / 2
+        elif pattern == 'circle':
+            x, y = np.meshgrid(np.linspace(-1, 1, w), np.linspace(-1, 1, h))
+            img = 1 - np.sqrt(x**2 + y**2)
+            img = np.clip(img, 0, 1)
+        elif pattern == 'checkerboard':
+            img = np.zeros((h, w))
+            for i in range(0, h, 8):
+                for j in range(0, w, 8):
+                    if ((i // 8) + (j // 8)) % 2 == 0:
+                        img[i:i+8, j:j+8] = 1
+        elif pattern == 'random':
+            img = np.random.rand(h, w)
+        else:
+            raise ValueError(f"Pattern '{pattern}' non reconnu")
+        self.img_original = img.astype(np.float32)
+        self.img_shape = size
+        return img
+
+    def creer_image_os_stylise(self, size=(64,64)):
+        h, w = size
+        img = np.zeros((h, w), dtype=np.float32)
+
+        rr, cc = np.ogrid[:h, :w]
+        center1 = (int(h*0.3), int(w*0.5))
+        center2 = (int(h*0.7), int(w*0.5))
+        radius = int(h*0.2)
+
+        circle1 = (rr - center1[0])**2 + (cc - center1[1])**2 <= radius**2
+        circle2 = (rr - center2[0])**2 + (cc - center2[1])**2 <= radius**2
+        rect = (rr > center1[0]) & (rr < center2[0]) & (np.abs(cc - center1[1]) < radius//2)
+
+        img[circle1 | circle2 | rect] = 1.0
+
+        self.img_original = img
+        self.img_shape = size
+        return img
+
+    def preparer_donnees(self, img):
+        h, w = img.shape
+        x, y = np.meshgrid(np.arange(w), np.arange(h))
+        X = np.stack([x.ravel(), y.ravel()], axis=1) / np.array([w-1, h-1])
+        Y = img.ravel()[:, None]
+        return X, Y
+
+    def creer_modele(self, architecture='simple'):
+        if architecture == 'simple':
+            self.model = Sequential([
+                Dense(64, activation='relu', input_shape=(2,)),
+                Dense(64, activation='relu'),
+                Dense(1, activation='sigmoid')
+            ])
+        elif architecture == 'deep':
+            self.model = Sequential([
+                Dense(128, activation='relu', input_shape=(2,)),
+                Dense(128, activation='relu'),
+                Dense(64, activation='relu'),
+                Dense(32, activation='relu'),
+                Dense(1, activation='sigmoid')
+            ])
+        elif architecture == 'wide':
+            self.model = Sequential([
+                Dense(256, activation='relu', input_shape=(2,)),
+                Dense(256, activation='relu'),
+                Dense(1, activation='sigmoid')
+            ])
+        else:
+            raise ValueError(f"Architecture '{architecture}' non reconnue")
+        self.model.compile(optimizer='adam', loss='mse', metrics=['mae'])
+        return self.model
+
+    def entrainer(self, X, Y, epochs=100, batch_size=512, verbose=1):
+        if self.model is None:
+            raise ValueError("Modèle non créé. Utilisez creer_modele() d'abord.")
+        print(f"🎯 Entraînement du modèle...")
+        print(f"   Échantillons: {len(X)}")
+        print(f"   Epochs: {epochs}")
+        print(f"   Batch size: {batch_size}")
+        history = self.model.fit(X, Y, epochs=epochs, batch_size=batch_size,
+                                 verbose=verbose, validation_split=0.1)
+        return history
+
+    def reconstruire(self, resolution=None):
+        if self.model is None:
+            raise ValueError("Modèle non entraîné")
+        if resolution is None:
+            resolution = self.img_shape
+        h, w = resolution
+        x, y = np.meshgrid(np.arange(w), np.arange(h))
+        X_grid = np.stack([x.ravel(), y.ravel()], axis=1) / np.array([w-1, h-1])
+        Y_pred = self.model.predict(X_grid, verbose=0)
+        img_reconstruit = Y_pred.reshape(h, w)
+        return img_reconstruit
+
+    def visualiser_resultats(self, img_reconstruit, titre="Reconstruction d'Image"):
+        plt.figure(figsize=(15, 5))
+        plt.subplot(1, 3, 1)
+        plt.imshow(self.img_original, cmap='gray')
+        plt.title('Image Originale')
+        plt.axis('off')
+        plt.subplot(1, 3, 2)
+        plt.imshow(img_reconstruit, cmap='gray')
+        plt.title('Image Reconstruite')
+        plt.axis('off')
+        plt.subplot(1, 3, 3)
+        diff = np.abs(self.img_original - img_reconstruit)
+        plt.imshow(diff, cmap='hot')
+        plt.title(f'Différence (MAE: {np.mean(diff):.4f})')
+        plt.axis('off')
+        plt.colorbar()
+        plt.suptitle(titre, fontsize=16)
+        plt.tight_layout()
+        plt.show()
+
+# --- Exemple d'utilisation complet ---
+
+ri = ReconstructionImage()
+
+# Générer une image stylisée en forme d'os
+img_test = ri.creer_image_os_stylise(size=(64,64))
+
+# Préparer les données
+X, Y = ri.preparer_donnees(img_test)
+
+# Créer et compiler le modèle
+ri.creer_modele(architecture='simple')
+
+# Entraîner le modèle
+ri.entrainer(X, Y, epochs=100, batch_size=512, verbose=2)
+
+# Reconstruire l'image
+img_reconstruit = ri.reconstruire()
+
+# Visualiser les résultats
+ri.visualiser_resultats(img_reconstruit)
+
+# 1. Image aléatoire
+img_np = np.clip(np.random.normal(loc=0.5, scale=0.2, size=(128, 128)), 0, 1).astype(np.float32)
+
+# 2. Définition du modèle CNN avec API fonctionnelle
+input_layer = Input(shape=(128*128,))
+x = Reshape((128, 128, 1))(input_layer)
+x = Conv2D(32, kernel_size=3, padding='same', activation='relu', name='conv1')(x)
+x = MaxPooling2D(pool_size=2)(x)
+x = Conv2D(64, kernel_size=3, padding='same', activation='relu', name='conv2')(x)
+x = MaxPooling2D(pool_size=2)(x)
+x = Flatten()(x)
+x = Dense(256, activation='relu')(x)
+output_layer = Dense(128*128, activation='sigmoid')(x)
+
+model_cnn = Model(inputs=input_layer, outputs=output_layer)
+
+# 3. Compilation et entraînement
+model_cnn.compile(optimizer='adam', loss='mse')
+model_cnn.fit(img_np.reshape(1, 128*128), img_np.reshape(1, 128*128), epochs=30, verbose=0)
+
+# 4. Reconstruction
+img_pred = model_cnn.predict(img_np.reshape(1, 128*128))[0].reshape(128, 128)
+
+# 5. Affichage original vs reconstruit
+plt.figure(figsize=(10, 5))
+plt.subplot(1, 2, 1)
+plt.title('Image originale')
+plt.imshow(img_np, cmap='gray')
+plt.axis('off')
+
+plt.subplot(1, 2, 2)
+plt.title('Image reconstruite')
+plt.imshow(img_pred, cmap='gray')
+plt.axis('off')
+plt.tight_layout()
+plt.show()
+
+# 6. Filtres de la première couche convolutionnelle
+filters, biases = model_cnn.get_layer('conv1').get_weights()
+n_filters = filters.shape[-1]
+
+plt.figure(figsize=(12, 4))
+for i in range(min(n_filters, 8)):
+    plt.subplot(1, 8, i + 1)
+    plt.imshow(filters[:, :, 0, i], cmap='gray')
+    plt.title(f'Filtre {i+1}')
+    plt.axis('off')
+plt.suptitle("Filtres appris - Couche Conv 1")
+plt.tight_layout()
+plt.show()
+
+# 7. Visualisation des activations des couches convolutionnelles
+activation_model = Model(inputs=model_cnn.input,
+                         outputs=[model_cnn.get_layer('conv1').output, model_cnn.get_layer('conv2').output])
+
+activations = activation_model.predict(img_np.reshape(1, 128*128))
+
+plt.figure(figsize=(15, 6))
+for i, activation in enumerate(activations):
+    n_features = activation.shape[-1]
+    for j in range(min(n_features, 8)):
+        plt.subplot(len(activations), 8, i * 8 + j + 1)
+        plt.imshow(activation[0, :, :, j], cmap='viridis')
+        plt.axis('off')
+plt.suptitle("Activations des couches convolutionnelles")
+plt.tight_layout()
+plt.show()
