@@ -7,7 +7,7 @@ utils de visualisation pédagogique des réseaux de neurones (Perceptron, MLP, C
 </div>
 
 ## 📌 Description du Projet
-**Outils interactifs** pour visualiser le fonctionnement interne des réseaux de neurones développés durant mon stage M2 MAPI3 à l'IRIT (Université Toulouse III).
+**Outils interactifs** pour visualiser le fonctionnement interne des réseaux de neurones développés durant mon stage M1 MAPI3 (TER à l'IRIT)  (Université Toulouse III).
 
 ## 🛠️ Technologies Utilisées
 - ![Python](https://img.shields.io/badge/Python-3.8+-blue?logo=python)
