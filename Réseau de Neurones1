@@ -1,0 +1,438 @@
+import numpy as np
+#%matplotlib notebook
+%matplotlib inline
+import matplotlib.pyplot as plt
+from IPython.core.debugger import set_trace
+import warnings
+warnings.filterwarnings('ignore')
+import numpy as np
+import matplotlib.pyplot as plt
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.linear_model import Perceptron
+import tensorflow as tf
+from PIL import Image
+from google.colab import files
+from sklearn import datasets
+from sklearn.datasets import make_blobs
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.datasets import make_moons, make_circles, make_classification
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import make_pipeline
+from sklearn.neural_network import MLPClassifier
+from matplotlib.colors import ListedColormap
+from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Reshape, Input
+from tensorflow.keras.models import Model
+
+
+# Activation functions and visualization in Python
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Définition des fonctions d'activation
+def sigmoid(z):
+    return 1 / (1 + np.exp(-z))
+
+def relu(z):
+    return np.maximum(0, z)
+
+def tanh(z):
+    return np.tanh(z)
+
+# Texte explicatif simulant les sous-sections LaTeX
+def afficher_description():
+    print("=== Fonction Sigmoïde ===")
+    print("σ(z) = 1 / (1 + e^(-z))")
+    print("Propriétés :")
+    print("- Sortie dans l'intervalle (0, 1)")
+    print("- Dérivée : σ'(z) = σ(z)(1 - σ(z))")
+    print("- Problème : gradient qui disparaît\n")
+
+    print("=== Fonction ReLU ===")
+    print("ReLU(z) = max(0, z)")
+    print("Propriétés :")
+    print("- Simple à calculer")
+    print("- Dérivée : 1 si z > 0, 0 sinon")
+    print("- Résout partiellement le problème du gradient disparu\n")
+
+    print("=== Fonction Tanh ===")
+    print("tanh(z) = (e^z - e^(-z)) / (e^z + e^(-z))")
+    print("Propriétés :")
+    print("- Sortie dans (-1, 1)")
+    print("- Centrée autour de zéro")
+
+# Visualisation
+def tracer_fonctions_activation():
+    z = np.linspace(-5, 5, 1000)
+
+    plt.figure(figsize=(10, 6))
+    plt.plot(z, sigmoid(z), label="Sigmoïde", color='blue', linewidth=2)
+    plt.plot(z, relu(z), label="ReLU", color='red', linewidth=2)
+    plt.plot(z, tanh(z), label="Tanh", color='green', linewidth=2)
+
+    plt.title("Comparaison des fonctions d'activation")
+    plt.xlabel("z")
+    plt.ylabel("f(z)")
+    plt.grid(True, alpha=0.3)
+    plt.legend()
+    plt.axhline(0, color='black', linewidth=0.5)
+    plt.axvline(0, color='black', linewidth=0.5)
+    plt.tight_layout()
+    plt.show()
+
+# Appel des fonctions
+afficher_description()
+tracer_fonctions_activation()
+
+
+class Perceptron:
+
+
+    def __init__(self, add_bias=True, max_iters=10000, record_updates=False):
+        self.max_iters = max_iters
+        self.add_bias = add_bias
+        self.record_updates = record_updates
+        if record_updates:
+            self.w_hist = []  # enregistre les poids
+            self.n_hist = []  # enregistre l'indice du point de données sélectionné
+
+    def fit(self, x, y):
+        if x.ndim == 1:
+            x = x[:, None]
+        if self.add_bias:
+            N = x.shape[0]
+            x = np.column_stack([x, np.ones(N)])  # ajout d'un biais (colonne de 1)
+        N, D = x.shape
+        w = np.zeros(D)  # initialisation des poids à zéro
+        if self.record_updates:
+            w_hist = [w]
+        # y = np.sign(y - .1)  # pour obtenir +1 pour la classe 1 et -1 pour la classe 0
+        y = 2 * y - 1  # conversion de 0,1 vers -1,+1
+        t = 0
+        change = True  # si les poids ne changent plus, l'algorithme a convergé
+        while change and t < self.max_iters:
+            change = False
+            for n in np.random.permutation(N):
+                yh = np.sign(np.dot(x[n, :], w))  # prédiction du point d'entraînement
+                if yh == y[n]:
+                    continue  # on ignore les points bien classés
+                # w = w + (y[n] - yh) * x[n, :]  # mise à jour des poids
+                w = w + y[n] * x[n, :]
+                if self.record_updates:
+                    self.w_hist.append(w)
+                    self.n_hist.append(n)
+                change = True
+                t += 1
+                if t >= self.max_iters:
+                    break
+        if change:
+            print(f'pas convergé après {t} mises à jour')
+        else:
+            print(f'convergence après {t} itérations !')
+        self.w = w
+        return self
+
+    def predict(self, x):
+        if x.ndim == 1:
+            x = x[:, None]
+        Nt = x.shape[0]
+        if self.add_bias:
+            x = np.column_stack([x, np.ones(Nt)])  # ajout du biais si demandé
+        yh = np.sign(np.dot(self.w, x))
+        return (yh + 1) // 2  # conversion de -1/+1 vers les classes 0/1
+# Code pour générer convergence_separable.png
+def generate_convergence_separable():
+    # Chargement du dataset Iris (2 classes, 2 features)
+    dataset = datasets.load_iris()
+    x, y = dataset['data'][:, 2:], dataset['target']  # les 2 dernières features
+    x, y = x[y < 2, :], y[y < 2]  # classes 0 et 1 uniquement
+
+    # On suppose que ta classe Perceptron s'appelle bien Perceptron et possède w_hist
+    model = Perceptron(record_updates=True)
+    model.fit(x, y)
+
+    # Tracé des données avec couleurs modifiées
+    plt.figure(figsize=(8, 6))
+    plt.plot(x[y == 0, 0], x[y == 0, 1], 'k.', markersize=8, label='Classe 0')  # points classe 0 en noir
+    plt.plot(x[y == 1, 0], x[y == 1, 1], 'r.', markersize=8, label='Classe 1')  # points classe 1 en rouge
+
+    x_line = np.linspace(np.min(x[:, 0]), np.max(x[:, 0]), 100)
+
+    # Tracé de la frontière en vert, alpha variant
+    for t, w in enumerate(model.w_hist):
+        coef = -w[0] / w[1]  # pente
+        intercept = -w[2] / w[1]  # intercept
+        plt.plot(x_line, coef * x_line + intercept, color='green',
+                 alpha=t / len(model.w_hist), linewidth=1.5)
+
+    plt.xlabel(r'$x_1$', fontsize=12)
+    plt.ylabel(r'$x_2$', fontsize=12)
+    plt.title('Convergence de l\'algorithme - Cas séparable', fontsize=14)
+    plt.legend(fontsize=12)
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+
+    # Sauvegarder la figure
+    plt.savefig('convergence_separable.png', dpi=300, bbox_inches='tight')
+    plt.show()
+
+    print(f"Cas séparable - Nombre de mises à jour: {len(model.w_hist)}")
+
+
+# Code pour générer convergence_non_separable.png
+def generate_convergence_non_separable():
+    # Chargement du dataset Iris avec features différentes
+    dataset = datasets.load_iris()
+    x, y = dataset['data'][:,[1,2]], dataset['target']  # slice feature 1 and 2 of Iris dataset
+    y = y > 1
+
+    model = Perceptron(record_updates=True)
+    yh = model.fit(x, y)
+
+    plt.figure(figsize=(8, 6))
+    plt.plot(x[y==0,0], x[y==0,1], 'k.', markersize=8, label='Classe 0')
+    plt.plot(x[y==1,0], x[y==1,1], 'b.', markersize=8, label='Classe 1')
+
+    x_line = np.linspace(np.min(x[:,0]), np.max(x[:,0]), 100)
+    for t,w in enumerate(model.w_hist):
+        coef = -w[0]/w[1]
+        plt.plot(x_line, coef*x_line - w[2]/w[1], 'r-', alpha=t/len(model.w_hist), linewidth=1.5)
+
+    plt.xlabel(r'$x_1$', fontsize=12)
+    plt.ylabel(r'$x_2$', fontsize=12)
+    plt.ylim(-1,10)
+    plt.title('Perceptron quand le data n\'est pas linéairement séparable', fontsize=14)
+    plt.legend(fontsize=12)
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+
+    # Sauvegarder la figure
+    plt.savefig('convergence_non_separable.png', dpi=300, bbox_inches='tight')
+    plt.show()
+
+    print(f"Cas non séparable - Nombre de mises à jour: {len(model.w_hist)}")
+
+
+# Code pour générer les deux figures côte à côte (optionnel)
+def generate_comparison_figure():
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
+
+    # Cas séparable
+    dataset = datasets.load_iris()
+    x1, y1 = dataset['data'][:, 2:], dataset['target']
+    x1, y1 = x1[y1 < 2, :], y1[y1 < 2]
+
+    model1 = Perceptron(record_updates=True)
+    model1.fit(x1, y1)
+
+    ax1.plot(x1[y1 == 0, 0], x1[y1 == 0, 1], 'k.', markersize=8, label='Classe 0')
+    ax1.plot(x1[y1 == 1, 0], x1[y1 == 1, 1], 'r.', markersize=8, label='Classe 1')
+
+    x_line1 = np.linspace(np.min(x1[:, 0]), np.max(x1[:, 0]), 100)
+    for t, w in enumerate(model1.w_hist):
+        coef = -w[0] / w[1]
+        intercept = -w[2] / w[1]
+        ax1.plot(x_line1, coef * x_line1 + intercept, color='green',
+                alpha=t / len(model1.w_hist), linewidth=1.5)
+
+    ax1.set_xlabel(r'$x_1$', fontsize=12)
+    ax1.set_ylabel(r'$x_2$', fontsize=12)
+    ax1.set_title('(a) Cas linéairement séparable', fontsize=14)
+    ax1.legend(fontsize=12)
+    ax1.grid(True, alpha=0.3)
+
+    # Cas non séparable
+    x2, y2 = dataset['data'][:,[1,2]], dataset['target']
+    y2 = y2 > 1
+
+    model2 = Perceptron(record_updates=True)
+    model2.fit(x2, y2)
+
+    ax2.plot(x2[y2==0,0], x2[y2==0,1], 'k.', markersize=8, label='Classe 0')
+    ax2.plot(x2[y2==1,0], x2[y2==1,1], 'b.', markersize=8, label='Classe 1')
+
+    x_line2 = np.linspace(np.min(x2[:,0]), np.max(x2[:,0]), 100)
+    for t,w in enumerate(model2.w_hist):
+        coef = -w[0]/w[1]
+        ax2.plot(x_line2, coef*x_line2 - w[2]/w[1], 'r-', alpha=t/len(model2.w_hist), linewidth=1.5)
+
+    ax2.set_xlabel(r'$x_1$', fontsize=12)
+    ax2.set_ylabel(r'$x_2$', fontsize=12)
+    ax2.set_ylim(-1,10)
+    ax2.set_title('(b) Cas non linéairement séparable', fontsize=14)
+    ax2.legend(fontsize=12)
+    ax2.grid(True, alpha=0.3)
+
+    plt.tight_layout()
+    plt.savefig('perceptron_comparaison.png', dpi=300, bbox_inches='tight')
+    plt.show()
+
+    print(f"Comparaison - Séparable: {len(model1.w_hist)} mises à jour")
+    print(f"Comparaison - Non séparable: {len(model2.w_hist)} mises à jour")
+
+
+# Exécution des fonctions
+if __name__ == "__main__":
+    # Générer la figure du cas séparable
+    print("Génération de convergence_separable.png...")
+    generate_convergence_separable()
+
+    # Générer la figure du cas non séparable
+    print("\nGénération de convergence_non_separable.png...")
+    generate_convergence_non_separable()
+
+    # Optionnel: générer la figure de comparaison
+    print("\nGénération de la figure de comparaison...")
+    generate_comparison_figure()
+
+# Code pour générer convergence_separable.png
+def generate_convergence_separable():
+    # Chargement du dataset Iris (2 classes, 2 features)
+    dataset = datasets.load_iris()
+    x, y = dataset['data'][:, 2:], dataset['target']  # les 2 dernières features
+    x, y = x[y < 2, :], y[y < 2]  # classes 0 et 1 uniquement
+
+    # On suppose que ta classe Perceptron s'appelle bien Perceptron et possède w_hist
+    model = Perceptron(record_updates=True)
+    model.fit(x, y)
+
+    # Tracé des données avec couleurs modifiées
+    plt.figure(figsize=(8, 6))
+    plt.plot(x[y == 0, 0], x[y == 0, 1], 'k.', markersize=8, label='Classe 0')  # points classe 0 en noir
+    plt.plot(x[y == 1, 0], x[y == 1, 1], 'r.', markersize=8, label='Classe 1')  # points classe 1 en rouge
+
+    x_line = np.linspace(np.min(x[:, 0]), np.max(x[:, 0]), 100)
+
+    # Tracé de la frontière en vert, alpha variant
+    for t, w in enumerate(model.w_hist):
+        coef = -w[0] / w[1]  # pente
+        intercept = -w[2] / w[1]  # intercept
+        plt.plot(x_line, coef * x_line + intercept, color='green',
+                 alpha=t / len(model.w_hist), linewidth=1.5)
+
+    plt.xlabel(r'$x_1$', fontsize=12)
+    plt.ylabel(r'$x_2$', fontsize=12)
+    plt.title('Convergence de l\'algorithme - Cas séparable', fontsize=14)
+    plt.legend(fontsize=12)
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+
+    # Sauvegarder la figure
+    plt.savefig('convergence_separable.png', dpi=300, bbox_inches='tight')
+    plt.show()
+
+    print(f"Cas séparable - Nombre de mises à jour: {len(model.w_hist)}")
+
+
+# Code pour générer convergence_non_separable.png
+def generate_convergence_non_separable():
+    # Chargement du dataset Iris avec features différentes
+    dataset = datasets.load_iris()
+    x, y = dataset['data'][:,[1,2]], dataset['target']  # slice feature 1 and 2 of Iris dataset
+    y = y > 1
+
+    model = Perceptron(record_updates=True)
+    yh = model.fit(x, y)
+
+    plt.figure(figsize=(8, 6))
+    plt.plot(x[y==0,0], x[y==0,1], 'k.', markersize=8, label='Classe 0')
+    plt.plot(x[y==1,0], x[y==1,1], 'b.', markersize=8, label='Classe 1')
+
+    x_line = np.linspace(np.min(x[:,0]), np.max(x[:,0]), 100)
+    for t,w in enumerate(model.w_hist):
+        coef = -w[0]/w[1]
+        plt.plot(x_line, coef*x_line - w[2]/w[1], 'r-', alpha=t/len(model.w_hist), linewidth=1.5)
+
+    plt.xlabel(r'$x_1$', fontsize=12)
+    plt.ylabel(r'$x_2$', fontsize=12)
+    plt.ylim(-1,10)
+    plt.title('Perceptron quand le data n\'est pas linéairement séparable', fontsize=14)
+    plt.legend(fontsize=12)
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+
+    # Sauvegarder la figure
+    plt.savefig('convergence_non_separable.png', dpi=300, bbox_inches='tight')
+    plt.show()
+
+    print(f"Cas non séparable - Nombre de mises à jour: {len(model.w_hist)}")
+
+
+# Code pour générer les deux figures côte à côte (optionnel)
+def generate_comparison_figure():
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
+
+    # Cas séparable
+    dataset = datasets.load_iris()
+    x1, y1 = dataset['data'][:, 2:], dataset['target']
+    x1, y1 = x1[y1 < 2, :], y1[y1 < 2]
+
+    model1 = Perceptron(record_updates=True)
+    model1.fit(x1, y1)
+
+    ax1.plot(x1[y1 == 0, 0], x1[y1 == 0, 1], 'k.', markersize=8, label='Classe 0')
+    ax1.plot(x1[y1 == 1, 0], x1[y1 == 1, 1], 'r.', markersize=8, label='Classe 1')
+
+    x_line1 = np.linspace(np.min(x1[:, 0]), np.max(x1[:, 0]), 100)
+    for t, w in enumerate(model1.w_hist):
+        coef = -w[0] / w[1]
+        intercept = -w[2] / w[1]
+        ax1.plot(x_line1, coef * x_line1 + intercept, color='green',
+                alpha=t / len(model1.w_hist), linewidth=1.5)
+
+    ax1.set_xlabel(r'$x_1$', fontsize=12)
+    ax1.set_ylabel(r'$x_2$', fontsize=12)
+    ax1.set_title('(a) Cas linéairement séparable', fontsize=14)
+    ax1.legend(fontsize=12)
+    ax1.grid(True, alpha=0.3)
+
+    # Cas non séparable
+    x2, y2 = dataset['data'][:,[1,2]], dataset['target']
+    y2 = y2 > 1
+
+    model2 = Perceptron(record_updates=True)
+    model2.fit(x2, y2)
+
+    ax2.plot(x2[y2==0,0], x2[y2==0,1], 'k.', markersize=8, label='Classe 0')
+    ax2.plot(x2[y2==1,0], x2[y2==1,1], 'b.', markersize=8, label='Classe 1')
+
+    x_line2 = np.linspace(np.min(x2[:,0]), np.max(x2[:,0]), 100)
+    for t,w in enumerate(model2.w_hist):
+        coef = -w[0]/w[1]
+        ax2.plot(x_line2, coef*x_line2 - w[2]/w[1], 'r-', alpha=t/len(model2.w_hist), linewidth=1.5)
+
+    ax2.set_xlabel(r'$x_1$', fontsize=12)
+    ax2.set_ylabel(r'$x_2$', fontsize=12)
+    ax2.set_ylim(-1,10)
+    ax2.set_title('(b) Cas non linéairement séparable', fontsize=14)
+    ax2.legend(fontsize=12)
+    ax2.grid(True, alpha=0.3)
+
+    plt.tight_layout()
+    plt.savefig('perceptron_comparaison.png', dpi=300, bbox_inches='tight')
+    plt.show()
+
+    print(f"Comparaison - Séparable: {len(model1.w_hist)} mises à jour")
+    print(f"Comparaison - Non séparable: {len(model2.w_hist)} mises à jour")
+
+
+# Exécution des fonctions
+if __name__ == "__main__":
+    # Générer la figure du cas séparable
+    print("Génération de convergence_separable.png...")
+    generate_convergence_separable()
+
+    # Générer la figure du cas non séparable
+    print("\nGénération de convergence_non_separable.png...")
+    generate_convergence_non_separable()
+
+    # Optionnel: générer la figure de comparaison
+    print("\nGénération de la figure de comparaison...")
+    generate_comparison_figure()
+
+
