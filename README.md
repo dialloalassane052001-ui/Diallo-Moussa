@@ -34,11 +34,7 @@ The project explores how learning mechanisms can be made visible and intuitive, 
 - Deep learning frameworks (TensorFlow)
 - Communicating technical concepts through visual tools
 
-## 🔒 Confidentiality
 
-This repository intentionally does **not** include the source code, notebooks, internship report, or defense slides.
-
-The work was carried out within the IRIT laboratory (Université Toulouse III) as part of a supervised research internship (TER) and is subject to research confidentiality agreements. It cannot be published without written authorization from the laboratory.
 
 ## 👤 About Me
 
